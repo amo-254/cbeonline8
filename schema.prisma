@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Learner {
+  id             Int      @id @default(autoincrement())
+  admissionNo    String   @unique @map("admission_no")
+  name           String
+  className      String?  @map("class_name")
+  stream         String?
+  parentPhone    String?  @map("parent_phone")
+  assessmentNo   String?  @map("assessment_no")
+  gender         String?
+  status         String   @default("Active")
+  graduatingClass String? @map("graduating_class")
+  graduationYear Int?     @map("graduation_year")
+  scores         Score[]
+  graduatingMemberships GraduatingClassMember[]
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+  @@map("learners")
+}
+
+model Score {
+  id                  Int      @id @default(autoincrement())
+  learnerId           Int      @map("learner_id")
+  learningArea        String   @map("learning_area")
+  score               Float
+  maxScore            Float    @map("max_score")
+  term                String?
+  year                Int?
+  assessmentType      String?  @map("assessment_type")
+  assessmentId        Int?     @map("assessment_id")
+  gradeAtAssessment   String?  @map("grade_at_assessment")
+  streamAtAssessment  String?  @map("stream_at_assessment")
+  learner             Learner  @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  assessment          Assessment? @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
+  @@index([learnerId])
+  @@index([assessmentId])
+  @@unique([learnerId, learningArea, assessmentId])
+  @@map("scores")
+}
+
+model User {
+  id            Int      @id @default(autoincrement())
+  username      String   @unique
+  passwordHash  String   @map("password")
+  passwordDisplay String? @map("password_display")
+  role          String
+  teacher       Teacher?
+  @@map("users")
+}
+
+model Setting {
+  key   String @id
+  value String?
+  @@map("settings")
+}
+
+model Teacher {
+  id          Int      @id @default(autoincrement())
+  name        String
+  teacherNo   String?  @map("teacher_no")
+  username    String?  @unique
+  user        User?    @relation(fields: [username], references: [username], onDelete: SetNull)
+  assignments TeacherAssignment[]
+  classAssignments ClassTeacherAssignment[]
+  @@map("teachers")
+}
+
+model TeacherAssignment {
+  id           Int     @id @default(autoincrement())
+  teacherId    Int     @map("teacher_id")
+  learningArea String  @map("learning_area")
+  className    String  @map("class_name")
+  stream       String
+  teacher      Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  @@index([teacherId])
+  @@map("teacher_assignments")
+}
+
+model ClassTeacherAssignment {
+  id        Int     @id @default(autoincrement())
+  teacherId Int     @map("teacher_id")
+  className String  @map("class_name")
+  stream    String
+  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  @@unique([className, stream])
+  @@map("class_teacher_assignments")
+}
+
+model Assessment {
+  id             Int      @id @default(autoincrement())
+  grade          String
+  term           String
+  year           Int
+  assessmentType String   @map("assessment_type")
+  deadline       String?
+  analyzed       Boolean  @default(false)
+  analyzedAt     String?  @map("analyzed_at")
+  analysisCount Int      @default(0) @map("analysis_count")
+  createdAt      String   @map("created_at")
+  deleted        Boolean  @default(false)
+  deletedAt      String?  @map("deleted_at")
+  scores         Score[]
+  @@unique([grade, term, year, assessmentType])
+  @@map("assessments")
+}
+
+model GraduatingClass {
+  id            Int      @id @default(autoincrement())
+  label         String   @unique
+  graduationYear Int     @map("graduation_year")
+  createdAt     String   @map("created_at")
+  members       GraduatingClassMember[]
+  @@map("graduating_classes")
+}
+
+model GraduatingClassMember {
+  id                 Int      @id @default(autoincrement())
+  graduatingClassId  Int      @map("graduating_class_id")
+  learnerId          Int      @map("learner_id")
+  originalGrade      String?  @map("original_grade")
+  originalStream     String?  @map("original_stream")
+  graduatingClass    GraduatingClass @relation(fields: [graduatingClassId], references: [id], onDelete: Cascade)
+  learner            Learner @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  @@unique([graduatingClassId, learnerId])
+  @@map("graduating_class_members")
+}
